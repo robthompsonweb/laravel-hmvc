@@ -102,6 +102,7 @@ class Hmvc {
             $this->request->setMethod($requestMethod);
             $this->request->replace($request->input());
 
+            /*
             // Dispatch request.
             $dispatch = $this->router->dispatch($request);
 
@@ -127,6 +128,38 @@ class Hmvc {
             $this->request->replace($originalInput);
 
             return $response;
+            */
+
+            // Dispatch request.
+            $response = app()->handle($request);
+
+            if (method_exists($response, 'getOriginalContent'))
+            {
+                $responseBody = $response->getOriginalContent();
+            }
+            else
+            {
+                $responseBody = $response->getContent();
+            }
+
+
+            // Decode json content.
+            if ($response->headers->get('content-type') == 'application/json')
+            {
+                if (function_exists('json_decode') and is_string($responseBody))
+                {
+                    $responseBody = json_decode($responseBody, true);
+                }
+            }
+
+            // Restore the request input and route back to the original state.
+            $this->request->replace($originalInput);
+
+            $result['body'] = $responseBody;
+            $result['status'] = $response->getStatusCode();
+            $result['header'] = $response->headers->all();
+
+            return $result;
         }
         catch (NotFoundHttpException $e)
         {
